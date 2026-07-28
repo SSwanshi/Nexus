@@ -1,20 +1,20 @@
 {
-  "name": "Nexus",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "nexus",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:api": "pnpm --filter @nexus/api dev",
+    "dev:gateway": "pnpm --filter @nexus/gateway dev",
+    "dev:worker": "pnpm --filter @nexus/worker dev",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write ."
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.17.0",
-      "onFail": "download"
-    }
-  },
-  "type": "module"
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.14.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.0",
+    "prisma": "^7.0.0"
+  }
 }

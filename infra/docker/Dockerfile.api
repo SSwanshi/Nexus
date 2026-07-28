@@ -1,0 +1,40 @@
+# --- Base stage: shared setup for install + build ---
+FROM node:20-alpine AS base
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+# --- Dependencies stage: install once, cache-friendly ---
+FROM base AS deps
+# Copy only what's needed to resolve the workspace graph first,
+# so Docker can cache this layer unless dependencies actually change.
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
+COPY packages/shared/package.json ./packages/shared/package.json
+COPY apps/api/package.json ./apps/api/package.json
+RUN pnpm install --frozen-lockfile --filter @nexus/api... 
+
+# --- Build stage: compile shared + api ---
+FROM base AS build
+COPY --from=deps /app /app
+COPY packages/shared ./packages/shared
+COPY apps/api ./apps/api
+COPY tsconfig.base.json ./tsconfig.base.json
+RUN pnpm --filter @nexus/shared build
+RUN pnpm --filter @nexus/api build
+
+# --- Runtime stage: minimal image, only compiled output + prod deps ---
+FROM node:20-alpine AS runtime
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+COPY --from=build /app/pnpm-workspace.yaml /app/package.json /app/pnpm-lock.yaml* ./
+COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/apps/api/package.json ./apps/api/package.json
+COPY --from=build /app/apps/api/dist ./apps/api/dist
+
+RUN pnpm install --prod --frozen-lockfile --filter @nexus/api...
+
+ENV NODE_ENV=production
+EXPOSE 3000
+
+CMD ["node", "apps/api/dist/index.js"]

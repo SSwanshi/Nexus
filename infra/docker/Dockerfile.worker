@@ -1,0 +1,34 @@
+FROM node:20-alpine AS base
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+FROM base AS deps
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
+COPY packages/shared/package.json ./packages/shared/package.json
+COPY apps/worker/package.json ./apps/worker/package.json
+RUN pnpm install --frozen-lockfile --filter @nexus/worker...
+
+FROM base AS build
+COPY --from=deps /app /app
+COPY packages/shared ./packages/shared
+COPY apps/worker ./apps/worker
+COPY tsconfig.base.json ./tsconfig.base.json
+RUN pnpm --filter @nexus/shared build
+RUN pnpm --filter @nexus/worker build
+
+FROM node:20-alpine AS runtime
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+COPY --from=build /app/pnpm-workspace.yaml /app/package.json /app/pnpm-lock.yaml* ./
+COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/apps/worker/package.json ./apps/worker/package.json
+COPY --from=build /app/apps/worker/dist ./apps/worker/dist
+
+RUN pnpm install --prod --frozen-lockfile --filter @nexus/worker...
+
+ENV NODE_ENV=production
+EXPOSE 3000
+
+CMD ["node", "apps/worker/dist/index.js"]
