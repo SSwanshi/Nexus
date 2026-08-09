@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { redis } from "../redis/client";
 import { logger } from "@nexus/shared";
 import type { ResolvedRoute } from "../routing/loadRoutes";
+import { rateLimitRejections } from "../metrics/registry";
 
 /**
  * Fixed-window rate limiter keyed by route + client identity.
@@ -37,6 +38,7 @@ export async function rateLimitMiddleware(
     if (current > requestsPerWindow) {
       const ttl = await redis.ttl(key);
       res.setHeader("Retry-After", ttl > 0 ? ttl : windowSeconds);
+      rateLimitRejections.inc({ route: route.id });
       return res.status(429).json({ error: "Rate limit exceeded", retryAfterSeconds: ttl });
     }
 

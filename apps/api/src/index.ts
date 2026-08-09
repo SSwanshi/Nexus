@@ -14,6 +14,18 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", service: config.SERVICE_NAME, timestamp: new Date().toISOString() });
 });
 
+app.get("/ping-open", (_req, res) => {
+  res.json({ message: "pong: no auth, no rate limit" });
+});
+
+app.get("/ping-limited", (_req, res) => {
+  res.json({ message: "pong: rate limited route" });
+});
+
+app.get("/ping-secure", (_req, res) => {
+  res.json({ message: "pong: JWT-protected route" });
+});
+
 app.listen(config.PORT, () => {
   logger.info(`API service listening on port ${config.PORT}`);
 });
