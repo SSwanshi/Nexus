@@ -66,5 +66,18 @@ services:
       redis:
         condition: service_healthy
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.scheduler
+    env_file: .env.scheduler
+    ports:
+      - "3003:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:

@@ -7,7 +7,7 @@
 export const openApiSpec = {
   openapi: "3.0.0",
   info: {
-    title: "DevFlow Gateway API",
+    title: "Nexus Gateway API",
     version: "0.1.0",
     description: "Single entry point for all client traffic. Routes, auth, and rate limits are configured dynamically via the dashboard/database.",
   },

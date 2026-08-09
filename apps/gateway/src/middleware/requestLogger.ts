@@ -10,7 +10,7 @@ export interface RequestWithContext extends Request {
 /**
  * Attaches a correlation ID to every request — reused from an incoming
  * X-Correlation-Id header if the caller already has one (e.g. it's being
- * forwarded from another DevFlow service), otherwise generates a new one.
+ * forwarded from another Nexus service), otherwise generates a new one.
  * This ID threads through to the proxied service and into every log line,
  * which is what makes Phase 7 (production hardening) tracing possible.
  */
