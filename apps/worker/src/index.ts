@@ -13,7 +13,7 @@ const worker = startWorker();
 
 app.listen(config.PORT, () => {
   logger.info(`Worker service listening on port ${config.PORT}`);
-  logger.info("Worker pool started, concurrency: 5");
+  logger.info({ concurrency: config.WORKER_CONCURRENCY }, "Worker pool started");
 });
 
 process.on("SIGTERM", async () => {

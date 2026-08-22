@@ -13,6 +13,8 @@ const envSchema = z.object({
   REDIS_URL: z.string().url(),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   SERVICE_NAME: z.string().default("nexus-service"),
+  // Worker pool size — how many jobs one worker process runs in parallel.
+  WORKER_CONCURRENCY: z.coerce.number().int().positive().default(5),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;
