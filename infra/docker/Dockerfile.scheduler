@@ -1,10 +1,12 @@
 FROM node:20-alpine AS base
 WORKDIR /app
+RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
 FROM base AS deps
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
 COPY packages/shared/package.json ./packages/shared/package.json
+COPY packages/shared/prisma ./packages/shared/prisma
 COPY apps/scheduler/package.json ./apps/scheduler/package.json
 RUN pnpm install --frozen-lockfile --filter @nexus/scheduler...
 
@@ -13,20 +15,24 @@ COPY --from=deps /app /app
 COPY packages/shared ./packages/shared
 COPY apps/scheduler ./apps/scheduler
 COPY tsconfig.base.json ./tsconfig.base.json
+RUN pnpm --filter @nexus/shared prisma:generate
 RUN pnpm --filter @nexus/shared build
 RUN pnpm --filter @nexus/scheduler build
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
+RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
-COPY --from=build /app/pnpm-workspace.yaml /app/package.json ./
+COPY --from=build /app/pnpm-workspace.yaml /app/package.json /app/pnpm-lock.yaml* ./
 COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=build /app/packages/shared/prisma ./packages/shared/prisma
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/apps/scheduler/package.json ./apps/scheduler/package.json
 COPY --from=build /app/apps/scheduler/dist ./apps/scheduler/dist
 
 RUN pnpm install --prod --frozen-lockfile --filter @nexus/scheduler...
+RUN pnpm --filter @nexus/shared prisma:generate
 
 ENV NODE_ENV=production
 EXPOSE 3003
