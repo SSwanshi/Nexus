@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from "express";
-import { prisma, logger } from "@nexus/shared";
+import { prisma, logger, JobType, type JobPayloadMap } from "@nexus/shared";
 import { jobQueue } from "../queue/queue";
+import { enqueueJob } from "../queue/enqueueJob";
 
 /**
  * Express 4 doesn't catch rejected promises from async handlers, so wrap each
@@ -13,6 +14,56 @@ const asyncHandler =
     Promise.resolve(fn(req, res, next)).catch(next);
 
 export const jobsRouter: Router = Router();
+
+const VALID_JOB_TYPES = Object.values(JobType) as string[];
+
+/**
+ * POST /jobs — the public enqueue endpoint (what the SDK calls).
+ *
+ * Body: { type, payload, priority?, delayMs? }
+ *
+ * Payload shape isn't validated per-type here: the worker's handler map is the
+ * authority on that, and a bad payload should surface as a failed job with a
+ * real error message (visible in JobLog/DLQ) rather than a silent 400. The
+ * SDK's generics catch shape mistakes at compile time for TS callers.
+ */
+jobsRouter.post(
+  "/jobs",
+  asyncHandler(async (req, res) => {
+    const { type, payload, priority, delayMs } = req.body ?? {};
+
+    if (typeof type !== "string" || !VALID_JOB_TYPES.includes(type)) {
+      res.status(400).json({
+        error: `Invalid job type '${String(type)}'`,
+        validTypes: VALID_JOB_TYPES,
+      });
+      return;
+    }
+
+    if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
+      res.status(400).json({ error: "'payload' must be a JSON object" });
+      return;
+    }
+
+    if (priority !== undefined && !Number.isInteger(priority)) {
+      res.status(400).json({ error: "'priority' must be an integer (lower = higher priority)" });
+      return;
+    }
+
+    if (delayMs !== undefined && (!Number.isFinite(delayMs) || delayMs < 0)) {
+      res.status(400).json({ error: "'delayMs' must be a non-negative number" });
+      return;
+    }
+
+    const jobType = type as JobType;
+    const job = await enqueueJob(jobType, payload as JobPayloadMap[typeof jobType], {
+      priority,
+      delayMs,
+    });
+
+    res.status(201).json({ jobId: job.id, type: job.type, status: job.status, runAt: job.runAt });
+  })
+);
 
 /** GET /jobs/:id — a single job with its execution logs (404 if unknown). */
 jobsRouter.get(

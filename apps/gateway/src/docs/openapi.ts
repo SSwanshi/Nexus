@@ -45,5 +45,48 @@ export const openApiSpec = {
         },
       },
     },
+    "/services": {
+      post: {
+        summary: "Register a backend service",
+        description: "Adds a service to the registry. Routes pointing at it are configured separately.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "baseUrl", "healthCheckUrl"],
+                properties: {
+                  name: { type: "string", description: "Unique service name" },
+                  baseUrl: { type: "string", description: "Where matching traffic is forwarded" },
+                  healthCheckUrl: { type: "string", description: "Endpoint to poll for liveness" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Service registered",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    name: { type: "string" },
+                    baseUrl: { type: "string" },
+                    healthCheckUrl: { type: "string" },
+                    createdAt: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "Missing or invalid fields" },
+          "409": { description: "A service with that name already exists" },
+        },
+      },
+    },
   },
 };

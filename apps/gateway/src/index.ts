@@ -8,6 +8,7 @@ import { errorHandlerMiddleware } from "./middleware/errorHandler";
 import { metricsMiddleware } from "./middleware/metricsMiddleware";
 import { register } from "./metrics/registry";
 import { openApiSpec } from "./docs/openapi";
+import { servicesRouter } from "./routes/services";
 
 const config = loadConfig();
 const app = express();
@@ -25,6 +26,9 @@ app.get("/metrics", async (_req, res) => {
 });
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
+
+// Gateway's own control-plane APIs — must be registered before the catch-all proxy.
+app.use(servicesRouter);
 
 app.use(gatewayHandler);
 app.use(errorHandlerMiddleware);
